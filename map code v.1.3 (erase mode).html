@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapbox Click to Highlight Buildings</title>
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.11.0/mapbox-gl.js"></script>
+    <link href="https://api.mapbox.com/mapbox-gl-js/v2.11.0/mapbox-gl.css" rel="stylesheet">
+    <style>
+        body { margin: 0; padding: 0; display: flex; }
+        #map { width: 80%; height: 100vh; }
+        #sidebar {
+            width: 20%;
+            height: 100vh;
+            background-color: #f8f9fa;
+            padding: 10px;
+            box-shadow: -2px 0px 5px rgba(0,0,0,0.1);
+        }
+        .layer-option {
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<div id="map"></div>
+<div id="sidebar">
+    <div class="layer-option">
+        <label for="building-color">Building Color: </label>
+        <input type="color" id="building-color" value="#ff0000">
+        <label> <input type="checkbox" id="eraseMode"> Erase mode </label>
+    </div>
+    <!-- Add more layer options as needed -->
+
+</div>
+
+<script>
+    mapboxgl.accessToken = 'pk.eyJ1IjoiYWxleHQxIiwiYSI6ImNsbmtuZ3B6ZTB0cW8ybHJ6MnlzOHVxc3gifQ.wEHzozXQG2mfrSSxQFRPIg';
+
+    var map = new mapboxgl.Map({
+        style: 'mapbox://styles/alext1/clnknn2ry002801qwdgdw601b',
+        center: [30.420722, 50.428911],
+        zoom: 15.43,
+        pitch: 6.00,
+        bearing: 45.60,
+        container: 'map'
+    });
+
+    map.on('load', function() {
+    // Get references to the color picker and erase mode checkbox
+    var colorPicker = document.getElementById('building-color');
+    var eraseModeCheckbox = document.getElementById('eraseMode');
+    
+    // Array to store buildings and their assigned colors
+    var selectedBuildings = [];
+
+    // Add a new source for building highlights
+    map.addSource('highlighted-buildings', {
+        type: 'geojson',
+        data: {
+            type: 'FeatureCollection',
+            features: []
+        }
+    });
+    
+    // Add a new layer for the highlighted buildings
+    map.addLayer({
+        id: 'building-highlights',
+        source: 'highlighted-buildings',
+        type: 'fill',
+        paint: {
+            'fill-color': ['get', 'color'], // Get color from the building's properties
+            'fill-opacity': 0.5
+        }
+    });
+
+    // Handle the click event on the Buildings layer
+    map.on('click', 'building', function(e) {
+        if (e.features.length > 0) {
+            if (eraseModeCheckbox.checked) {
+                // If in erase mode, remove the building's color
+                selectedBuildings = selectedBuildings.filter(building => building.feature.id !== e.features[0].id);
+            } else {
+                // If not in erase mode, add or update the building's color
+                var existingBuilding = selectedBuildings.find(building => building.feature.id === e.features[0].id);
+                if (existingBuilding) {
+                    // Update the color of the existing building
+                    existingBuilding.color = colorPicker.value;
+                    existingBuilding.feature.properties.color = existingBuilding.color;
+                } else {
+                    // Add the new building with its color
+                    var featureWithColor = {
+                        feature: e.features[0],
+                        color: colorPicker.value
+                    };
+                    featureWithColor.feature.properties.color = featureWithColor.color;
+                    selectedBuildings.push(featureWithColor);
+                }
+            }
+
+            // Update the map with the selected buildings and their colors
+            map.getSource('highlighted-buildings').setData({
+                type: 'FeatureCollection',
+                features: selectedBuildings.map(building => building.feature)
+            });
+        }
+    });
+});
+
+</script>
+
+</body>
+</html>
